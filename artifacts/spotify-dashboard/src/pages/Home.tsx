@@ -18,7 +18,7 @@ export default function Home() {
 
   const handleLogin = () => {
     if (loginData?.url) {
-      window.location.href = loginData.url;
+      (window.top ?? window).location.href = loginData.url;
     }
   };
 
