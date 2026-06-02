@@ -359,23 +359,39 @@ router.get("/spotify/wrapped", async (req, res): Promise<void> => {
 router.get("/spotify/artist/:id", async (req, res): Promise<void> => {
   const userId = req.session.userId!;
   const rawId = Array.isArray(req.params.id) ? req.params.id[0] : req.params.id;
-  const [artist, topTracksData, relatedData, albumsData] = await Promise.all([
+  const [artistRes, topTracksRes, relatedRes, albumsRes] = await Promise.allSettled([
     spotifyFetch<SpotifyApiArtist>(userId, `/artists/${rawId}`),
     spotifyFetch<{ tracks: SpotifyApiTrack[] }>(userId, `/artists/${rawId}/top-tracks?market=from_token`),
     spotifyFetch<{ artists: SpotifyApiArtist[] }>(userId, `/artists/${rawId}/related-artists`),
     spotifyFetch<{ items: SpotifyApiAlbum[] }>(userId, `/artists/${rawId}/albums?limit=20&include_groups=album,single`),
   ]);
 
+  if (artistRes.status === "rejected") {
+    res.status(404).json({ error: "Artist not found" });
+    return;
+  }
+
+  const artist = artistRes.value;
+  const topTracksData = topTracksRes.status === "fulfilled" ? topTracksRes.value : { tracks: [] };
+  const relatedData = relatedRes.status === "fulfilled" ? relatedRes.value : { artists: [] };
+  const albumsData = albumsRes.status === "fulfilled" ? albumsRes.value : { items: [] };
+
   // check user's top artists rank
-  const topData = await spotifyFetch<{ items: SpotifyApiArtist[] }>(userId, "/me/top/artists?time_range=long_term&limit=50");
-  const userRank = (topData.items ?? []).findIndex((a) => a.id === rawId);
+  let userRank: number | null = null;
+  try {
+    const topData = await spotifyFetch<{ items: SpotifyApiArtist[] }>(userId, "/me/top/artists?time_range=long_term&limit=50");
+    const idx = (topData.items ?? []).findIndex((a) => a.id === rawId);
+    userRank = idx >= 0 ? idx + 1 : null;
+  } catch {
+    // non-critical — ignore
+  }
 
   res.json({
     artist: mapArtist(artist),
     topTracks: (topTracksData.tracks ?? []).slice(0, 10).map((t) => mapTrack(t)),
     relatedArtists: (relatedData.artists ?? []).slice(0, 10).map((a) => mapArtist(a)),
     albums: (albumsData.items ?? []).slice(0, 10).map(mapAlbum),
-    userRank: userRank >= 0 ? userRank + 1 : null,
+    userRank,
   });
 });
 

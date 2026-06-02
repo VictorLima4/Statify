@@ -27,19 +27,19 @@ export default function Activity() {
     );
   }
 
-  const byHour = data?.byHour?.map((count, hour) => ({
-    hour: hour === 0 ? "12am" : hour < 12 ? `${hour}am` : hour === 12 ? "12pm" : `${hour - 12}pm`,
-    plays: count,
+  const byHour = data?.byHour?.map((bucket, i) => ({
+    hour: bucket.label ?? (i === 0 ? "12am" : i < 12 ? `${i}am` : i === 12 ? "12pm" : `${i - 12}pm`),
+    plays: bucket.count,
   })) ?? [];
 
-  const byDay = data?.byDayOfWeek?.map((count, day) => ({
-    day: DAYS[day],
-    plays: count,
+  const byDay = data?.byDayOfWeek?.map((bucket, i) => ({
+    day: bucket.label ?? DAYS[i],
+    plays: bucket.count,
   })) ?? [];
 
-  const byMonth = data?.byMonth?.map((count, month) => ({
-    month: MONTHS[month],
-    plays: count,
+  const byMonth = data?.byMonth?.map((bucket, i) => ({
+    month: bucket.label ?? MONTHS[i],
+    plays: bucket.count,
   })) ?? [];
 
   const timeline = data?.timeline?.map(point => ({
