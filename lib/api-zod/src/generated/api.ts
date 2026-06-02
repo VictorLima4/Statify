@@ -894,3 +894,46 @@ export const GetListeningActivityResponse = zod.object({
 })
 
 
+/**
+ * @summary Get monthly sound capsule stats
+ */
+export const GetCapsuleQueryParams = zod.object({
+  "month": zod.coerce.string().optional()
+})
+
+export const GetCapsuleResponse = zod.object({
+  "month": zod.string(),
+  "availableMonths": zod.array(zod.string()),
+  "totalMinutes": zod.number(),
+  "totalStreams": zod.number(),
+  "topArtists": zod.array(zod.object({
+  "id": zod.string(),
+  "name": zod.string(),
+  "imageUrl": zod.string().nullish(),
+  "streams": zod.number(),
+  "minutesListened": zod.number()
+})),
+  "topTracks": zod.array(zod.object({
+  "id": zod.string(),
+  "name": zod.string(),
+  "artistName": zod.string(),
+  "albumName": zod.string(),
+  "imageUrl": zod.string().nullish(),
+  "streams": zod.number(),
+  "minutesListened": zod.number()
+})),
+  "topAlbums": zod.array(zod.object({
+  "id": zod.string(),
+  "name": zod.string(),
+  "artistName": zod.string(),
+  "imageUrl": zod.string().nullish(),
+  "streams": zod.number(),
+  "minutesListened": zod.number()
+})),
+  "topGenres": zod.array(zod.object({
+  "genre": zod.string(),
+  "streams": zod.number()
+}))
+})
+
+

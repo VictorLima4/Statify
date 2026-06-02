@@ -223,6 +223,52 @@ export interface ActivityData {
   timeline: TimelinePoint[];
 }
 
+export interface CapsuleArtist {
+  id: string;
+  name: string;
+  /** @nullable */
+  imageUrl?: string | null;
+  streams: number;
+  minutesListened: number;
+}
+
+export interface CapsuleTrack {
+  id: string;
+  name: string;
+  artistName: string;
+  albumName: string;
+  /** @nullable */
+  imageUrl?: string | null;
+  streams: number;
+  minutesListened: number;
+}
+
+export interface CapsuleAlbum {
+  id: string;
+  name: string;
+  artistName: string;
+  /** @nullable */
+  imageUrl?: string | null;
+  streams: number;
+  minutesListened: number;
+}
+
+export interface CapsuleGenreItem {
+  genre: string;
+  streams: number;
+}
+
+export interface CapsuleData {
+  month: string;
+  availableMonths: string[];
+  totalMinutes: number;
+  totalStreams: number;
+  topArtists: CapsuleArtist[];
+  topTracks: CapsuleTrack[];
+  topAlbums: CapsuleAlbum[];
+  topGenres: CapsuleGenreItem[];
+}
+
 export type AuthCallbackParams = {
 code?: string;
 state?: string;
@@ -306,4 +352,11 @@ export const GetListeningActivityPeriod = {
   '1y': '1y',
   all: 'all',
 } as const;
+
+export type GetCapsuleParams = {
+/**
+ * Month in YYYY-MM format, defaults to current month
+ */
+month?: string;
+};
 

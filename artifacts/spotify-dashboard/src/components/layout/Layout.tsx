@@ -13,7 +13,8 @@ import {
   Library, 
   History,
   LogOut,
-  Music
+  Music,
+  Sparkles
 } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
@@ -39,6 +40,7 @@ export default function Layout({ children }: { children: ReactNode }) {
     { href: "/activity", label: "Activity", icon: Activity },
     { href: "/insights", label: "Insights", icon: Lightbulb },
     { href: "/wrapped", label: "My Wrapped", icon: Gift },
+    { href: "/capsule", label: "Sound Capsule", icon: Sparkles },
     { href: "/library", label: "Library", icon: Library },
     { href: "/recently-played", label: "Recently Played", icon: History },
   ];

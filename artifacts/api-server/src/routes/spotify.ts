@@ -10,7 +10,7 @@ import {
   type SpotifyApiAlbum,
 } from "../lib/spotify";
 import { db, listeningHistoryTable, usersTable } from "@workspace/db";
-import { eq, desc, sql } from "drizzle-orm";
+import { eq, desc, sql, and, gte, lt } from "drizzle-orm";
 
 const router: IRouter = Router();
 
@@ -513,6 +513,126 @@ router.get("/spotify/activity", async (req, res): Promise<void> => {
       .sort((a, b) => a[0].localeCompare(b[0]))
       .map(([date, count]) => ({ date, count })),
   });
+});
+
+// Sound Capsule — monthly stats from listening history DB
+router.get("/spotify/capsule", async (req, res): Promise<void> => {
+  const userId = req.session.userId!;
+
+  const now = new Date();
+  const defaultMonth = `${now.getFullYear()}-${String(now.getMonth() + 1).padStart(2, "0")}`;
+  const month = ((req.query.month as string) || defaultMonth).trim();
+
+  const [yearStr, monthStr] = month.split("-");
+  const year = parseInt(yearStr, 10);
+  const monthNum = parseInt(monthStr, 10);
+  const startDate = new Date(year, monthNum - 1, 1);
+  const endDate = new Date(year, monthNum, 1);
+
+  // All plays for this user across all time (for available months list)
+  const [rows, allMonthsRows] = await Promise.all([
+    db
+      .select()
+      .from(listeningHistoryTable)
+      .where(
+        and(
+          eq(listeningHistoryTable.userId, userId),
+          gte(listeningHistoryTable.playedAt, startDate),
+          lt(listeningHistoryTable.playedAt, endDate)
+        )
+      ),
+    db
+      .selectDistinct({ m: sql<string>`to_char(played_at AT TIME ZONE 'UTC', 'YYYY-MM')` })
+      .from(listeningHistoryTable)
+      .where(eq(listeningHistoryTable.userId, userId))
+      .orderBy(sql`to_char(played_at AT TIME ZONE 'UTC', 'YYYY-MM') desc`),
+  ]);
+
+  const availableMonths = allMonthsRows.map((r) => r.m).filter(Boolean);
+
+  if (rows.length === 0) {
+    res.json({
+      month,
+      availableMonths,
+      totalMinutes: 0,
+      totalStreams: 0,
+      topArtists: [],
+      topTracks: [],
+      topAlbums: [],
+      topGenres: [],
+    });
+    return;
+  }
+
+  const totalStreams = rows.length;
+  const totalMinutes = Math.round(rows.reduce((s, r) => s + r.durationMs, 0) / 60000);
+
+  // Aggregate by artist
+  const artistAgg = new Map<string, { name: string; streams: number; totalMs: number; imageUrl: string | null }>();
+  for (const row of rows) {
+    const cur = artistAgg.get(row.artistId) ?? { name: row.artistName, streams: 0, totalMs: 0, imageUrl: null };
+    cur.streams++;
+    cur.totalMs += row.durationMs;
+    artistAgg.set(row.artistId, cur);
+  }
+  const topArtists = [...artistAgg.entries()]
+    .sort((a, b) => b[1].streams - a[1].streams)
+    .slice(0, 10)
+    .map(([id, d]) => ({ id, name: d.name, imageUrl: d.imageUrl, streams: d.streams, minutesListened: Math.round(d.totalMs / 60000 * 10) / 10 }));
+
+  // Aggregate by track
+  const trackAgg = new Map<string, { name: string; artistName: string; albumName: string; imageUrl: string | null; streams: number; totalMs: number }>();
+  for (const row of rows) {
+    const cur = trackAgg.get(row.trackId) ?? { name: row.trackName, artistName: row.artistName, albumName: row.albumName, imageUrl: row.albumImageUrl ?? null, streams: 0, totalMs: 0 };
+    cur.streams++;
+    cur.totalMs += row.durationMs;
+    trackAgg.set(row.trackId, cur);
+  }
+  const topTracks = [...trackAgg.entries()]
+    .sort((a, b) => b[1].streams - a[1].streams)
+    .slice(0, 10)
+    .map(([id, d]) => ({ id, name: d.name, artistName: d.artistName, albumName: d.albumName, imageUrl: d.imageUrl, streams: d.streams, minutesListened: Math.round(d.totalMs / 60000 * 10) / 10 }));
+
+  // Aggregate by album
+  const albumAgg = new Map<string, { name: string; artistName: string; imageUrl: string | null; streams: number; totalMs: number }>();
+  for (const row of rows) {
+    const cur = albumAgg.get(row.albumId) ?? { name: row.albumName, artistName: row.artistName, imageUrl: row.albumImageUrl ?? null, streams: 0, totalMs: 0 };
+    cur.streams++;
+    cur.totalMs += row.durationMs;
+    albumAgg.set(row.albumId, cur);
+  }
+  const topAlbums = [...albumAgg.entries()]
+    .sort((a, b) => b[1].streams - a[1].streams)
+    .slice(0, 10)
+    .map(([id, d]) => ({ id, name: d.name, artistName: d.artistName, imageUrl: d.imageUrl, streams: d.streams, minutesListened: Math.round(d.totalMs / 60000 * 10) / 10 }));
+
+  // Genres: fetch from Spotify for top artists, weight by stream count
+  let topGenres: { genre: string; streams: number }[] = [];
+  try {
+    const artistIds = topArtists.map((a) => a.id).slice(0, 10);
+    if (artistIds.length > 0) {
+      const artistsData = await spotifyFetch<{ artists: SpotifyApiArtist[] }>(userId, `/artists?ids=${artistIds.join(",")}`);
+      const genreMap = new Map<string, number>();
+      for (const spotifyArtist of artistsData.artists ?? []) {
+        const localArtist = topArtists.find((a) => a.id === spotifyArtist.id);
+        if (!localArtist) continue;
+        // Also grab the artist image while we're here and patch it back
+        const img = spotifyArtist.images?.[0]?.url ?? null;
+        if (img) localArtist.imageUrl = img;
+        for (const genre of spotifyArtist.genres ?? []) {
+          genreMap.set(genre, (genreMap.get(genre) ?? 0) + localArtist.streams);
+        }
+      }
+      topGenres = [...genreMap.entries()]
+        .sort((a, b) => b[1] - a[1])
+        .slice(0, 10)
+        .map(([genre, streams]) => ({ genre, streams }));
+    }
+  } catch {
+    // genres are non-critical
+  }
+
+  res.json({ month, availableMonths, totalMinutes, totalStreams, topArtists, topTracks, topAlbums, topGenres });
 });
 
 export default router;

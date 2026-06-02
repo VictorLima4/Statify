@@ -13,6 +13,7 @@ import Genres from "./pages/Genres";
 import Activity from "./pages/Activity";
 import Insights from "./pages/Insights";
 import Wrapped from "./pages/Wrapped";
+import Capsule from "./pages/Capsule";
 import Library from "./pages/Library";
 import RecentlyPlayed from "./pages/RecentlyPlayed";
 import ArtistDetail from "./pages/ArtistDetail";
@@ -65,6 +66,7 @@ function Router() {
       <Route path="/activity">{() => <ProtectedRoute component={Activity} />}</Route>
       <Route path="/insights">{() => <ProtectedRoute component={Insights} />}</Route>
       <Route path="/wrapped">{() => <ProtectedRoute component={Wrapped} />}</Route>
+      <Route path="/capsule">{() => <ProtectedRoute component={Capsule} />}</Route>
       <Route path="/library">{() => <ProtectedRoute component={Library} />}</Route>
       <Route path="/recently-played">{() => <ProtectedRoute component={RecentlyPlayed} />}</Route>
       <Route path="/artist/:id">{() => <ProtectedRoute component={ArtistDetail} />}</Route>

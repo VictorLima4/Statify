@@ -430,6 +430,26 @@ paths:
               schema:
                 $ref: "#/components/schemas/ActivityData"
 
+  /spotify/capsule:
+    get:
+      operationId: getCapsule
+      tags: [spotify]
+      summary: Get monthly sound capsule stats
+      parameters:
+        - name: month
+          in: query
+          required: false
+          schema:
+            type: string
+            description: Month in YYYY-MM format, defaults to current month
+      responses:
+        "200":
+          description: Monthly capsule data
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/CapsuleData"
+
 components:
   schemas:
     HealthStatus:
@@ -873,4 +893,95 @@ components:
         date:
           type: string
         count:
+          type: integer
+
+    CapsuleData:
+      type: object
+      required: [month, availableMonths, totalMinutes, totalStreams, topArtists, topTracks, topAlbums, topGenres]
+      properties:
+        month:
+          type: string
+        availableMonths:
+          type: array
+          items:
+            type: string
+        totalMinutes:
+          type: number
+        totalStreams:
+          type: integer
+        topArtists:
+          type: array
+          items:
+            $ref: "#/components/schemas/CapsuleArtist"
+        topTracks:
+          type: array
+          items:
+            $ref: "#/components/schemas/CapsuleTrack"
+        topAlbums:
+          type: array
+          items:
+            $ref: "#/components/schemas/CapsuleAlbum"
+        topGenres:
+          type: array
+          items:
+            $ref: "#/components/schemas/CapsuleGenreItem"
+
+    CapsuleArtist:
+      type: object
+      required: [id, name, streams, minutesListened]
+      properties:
+        id:
+          type: string
+        name:
+          type: string
+        imageUrl:
+          type: ["string", "null"]
+        streams:
+          type: integer
+        minutesListened:
+          type: number
+
+    CapsuleTrack:
+      type: object
+      required: [id, name, artistName, albumName, streams, minutesListened]
+      properties:
+        id:
+          type: string
+        name:
+          type: string
+        artistName:
+          type: string
+        albumName:
+          type: string
+        imageUrl:
+          type: ["string", "null"]
+        streams:
+          type: integer
+        minutesListened:
+          type: number
+
+    CapsuleAlbum:
+      type: object
+      required: [id, name, artistName, streams, minutesListened]
+      properties:
+        id:
+          type: string
+        name:
+          type: string
+        artistName:
+          type: string
+        imageUrl:
+          type: ["string", "null"]
+        streams:
+          type: integer
+        minutesListened:
+          type: number
+
+    CapsuleGenreItem:
+      type: object
+      required: [genre, streams]
+      properties:
+        genre:
+          type: string
+        streams:
           type: integer

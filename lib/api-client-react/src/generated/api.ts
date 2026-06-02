@@ -24,7 +24,9 @@ import type {
   AlbumDetail,
   ArtistDetail,
   AuthCallbackParams,
+  CapsuleData,
   GenreItem,
+  GetCapsuleParams,
   GetGenreDistributionParams,
   GetListeningActivityParams,
   GetPlaylistsParams,
@@ -1801,6 +1803,90 @@ export function useGetListeningActivity<TData = Awaited<ReturnType<typeof getLis
  ):  UseQueryResult<TData, TError> & { queryKey: QueryKey } {
 
   const queryOptions = getGetListeningActivityQueryOptions(params,options)
+
+  const query = useQuery(queryOptions) as  UseQueryResult<TData, TError> & { queryKey: QueryKey };
+
+  return { ...query, queryKey: queryOptions.queryKey };
+}
+
+
+
+
+
+
+
+export const getGetCapsuleUrl = (params?: GetCapsuleParams,) => {
+  const normalizedParams = new URLSearchParams();
+
+  Object.entries(params || {}).forEach(([key, value]) => {
+
+    if (value !== undefined) {
+      normalizedParams.append(key, value === null ? 'null' : value.toString())
+    }
+  });
+
+  const stringifiedParams = normalizedParams.toString();
+
+  return stringifiedParams.length > 0 ? `/api/spotify/capsule?${stringifiedParams}` : `/api/spotify/capsule`
+}
+
+/**
+ * @summary Get monthly sound capsule stats
+ */
+export const getCapsule = async (params?: GetCapsuleParams, options?: RequestInit): Promise<CapsuleData> => {
+
+  return customFetch<CapsuleData>(getGetCapsuleUrl(params),
+  {
+    ...options,
+    method: 'GET'
+
+
+  }
+);}
+
+
+
+
+
+export const getGetCapsuleQueryKey = (params?: GetCapsuleParams,) => {
+    return [
+    `/api/spotify/capsule`, ...(params ? [params] : [])
+    ] as const;
+    }
+
+
+export const getGetCapsuleQueryOptions = <TData = Awaited<ReturnType<typeof getCapsule>>, TError = ErrorType<unknown>>(params?: GetCapsuleParams, options?: { query?:UseQueryOptions<Awaited<ReturnType<typeof getCapsule>>, TError, TData>, request?: SecondParameter<typeof customFetch>}
+) => {
+
+const {query: queryOptions, request: requestOptions} = options ?? {};
+
+  const queryKey =  queryOptions?.queryKey ?? getGetCapsuleQueryKey(params);
+
+
+
+    const queryFn: QueryFunction<Awaited<ReturnType<typeof getCapsule>>> = ({ signal }) => getCapsule(params, { signal, ...requestOptions });
+
+
+
+
+
+   return  { queryKey, queryFn, ...queryOptions} as UseQueryOptions<Awaited<ReturnType<typeof getCapsule>>, TError, TData> & { queryKey: QueryKey }
+}
+
+export type GetCapsuleQueryResult = NonNullable<Awaited<ReturnType<typeof getCapsule>>>
+export type GetCapsuleQueryError = ErrorType<unknown>
+
+
+/**
+ * @summary Get monthly sound capsule stats
+ */
+
+export function useGetCapsule<TData = Awaited<ReturnType<typeof getCapsule>>, TError = ErrorType<unknown>>(
+ params?: GetCapsuleParams, options?: { query?:UseQueryOptions<Awaited<ReturnType<typeof getCapsule>>, TError, TData>, request?: SecondParameter<typeof customFetch>}
+
+ ):  UseQueryResult<TData, TError> & { queryKey: QueryKey } {
+
+  const queryOptions = getGetCapsuleQueryOptions(params,options)
 
   const query = useQuery(queryOptions) as  UseQueryResult<TData, TError> & { queryKey: QueryKey };
 
