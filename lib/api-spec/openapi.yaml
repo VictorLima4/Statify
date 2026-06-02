@@ -1,22 +1,24 @@
 openapi: 3.1.0
 info:
-  # Do not change the title, if the title changes, the import paths will be broken
   title: Api
   version: 0.1.0
-  description: API specification
+  description: Spotify Analytics Dashboard API
 servers:
   - url: /api
     description: Base API path
 tags:
   - name: health
     description: Health operations
+  - name: auth
+    description: Authentication
+  - name: spotify
+    description: Spotify data
 paths:
   /healthz:
     get:
       operationId: healthCheck
       tags: [health]
       summary: Health check
-      description: Returns server health status
       responses:
         "200":
           description: Healthy
@@ -24,13 +26,851 @@ paths:
             application/json:
               schema:
                 $ref: "#/components/schemas/HealthStatus"
+
+  /auth/login-url:
+    get:
+      operationId: getLoginUrl
+      tags: [auth]
+      summary: Get Spotify OAuth login URL
+      responses:
+        "200":
+          description: Login URL
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/LoginUrl"
+
+  /auth/callback:
+    get:
+      operationId: authCallback
+      tags: [auth]
+      summary: OAuth callback
+      parameters:
+        - name: code
+          in: query
+          required: false
+          schema:
+            type: string
+        - name: state
+          in: query
+          required: false
+          schema:
+            type: string
+        - name: error
+          in: query
+          required: false
+          schema:
+            type: string
+      responses:
+        "302":
+          description: Redirect after login
+
+  /auth/me:
+    get:
+      operationId: getMe
+      tags: [auth]
+      summary: Get current authenticated user
+      responses:
+        "200":
+          description: Current user
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/UserProfile"
+        "401":
+          description: Unauthorized
+
+  /auth/logout:
+    post:
+      operationId: logout
+      tags: [auth]
+      summary: Logout
+      responses:
+        "200":
+          description: Logged out
+
+  /spotify/now-playing:
+    get:
+      operationId: getNowPlaying
+      tags: [spotify]
+      summary: Get currently playing track
+      responses:
+        "200":
+          description: Now playing
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/NowPlaying"
+
+  /spotify/top-artists:
+    get:
+      operationId: getTopArtists
+      tags: [spotify]
+      summary: Get top artists
+      parameters:
+        - name: time_range
+          in: query
+          required: false
+          schema:
+            type: string
+            enum: [short_term, medium_term, long_term]
+            default: medium_term
+        - name: limit
+          in: query
+          required: false
+          schema:
+            type: integer
+            default: 50
+      responses:
+        "200":
+          description: Top artists
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: "#/components/schemas/SpotifyArtist"
+
+  /spotify/top-tracks:
+    get:
+      operationId: getTopTracks
+      tags: [spotify]
+      summary: Get top tracks
+      parameters:
+        - name: time_range
+          in: query
+          required: false
+          schema:
+            type: string
+            enum: [short_term, medium_term, long_term]
+            default: medium_term
+        - name: limit
+          in: query
+          required: false
+          schema:
+            type: integer
+            default: 50
+      responses:
+        "200":
+          description: Top tracks
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: "#/components/schemas/SpotifyTrack"
+
+  /spotify/recently-played:
+    get:
+      operationId: getRecentlyPlayed
+      tags: [spotify]
+      summary: Get recently played tracks
+      parameters:
+        - name: limit
+          in: query
+          required: false
+          schema:
+            type: integer
+            default: 50
+      responses:
+        "200":
+          description: Recently played
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: "#/components/schemas/RecentTrack"
+
+  /spotify/playlists:
+    get:
+      operationId: getPlaylists
+      tags: [spotify]
+      summary: Get user playlists
+      parameters:
+        - name: limit
+          in: query
+          required: false
+          schema:
+            type: integer
+            default: 50
+      responses:
+        "200":
+          description: Playlists
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: "#/components/schemas/SpotifyPlaylist"
+
+  /spotify/saved-tracks:
+    get:
+      operationId: getSavedTracks
+      tags: [spotify]
+      summary: Get user saved/liked tracks
+      parameters:
+        - name: limit
+          in: query
+          required: false
+          schema:
+            type: integer
+            default: 50
+        - name: offset
+          in: query
+          required: false
+          schema:
+            type: integer
+            default: 0
+      responses:
+        "200":
+          description: Saved tracks
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/SavedTracksResponse"
+
+  /spotify/saved-albums:
+    get:
+      operationId: getSavedAlbums
+      tags: [spotify]
+      summary: Get user saved albums
+      parameters:
+        - name: limit
+          in: query
+          required: false
+          schema:
+            type: integer
+            default: 50
+        - name: offset
+          in: query
+          required: false
+          schema:
+            type: integer
+            default: 0
+      responses:
+        "200":
+          description: Saved albums
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/SavedAlbumsResponse"
+
+  /spotify/followed-artists:
+    get:
+      operationId: getFollowedArtists
+      tags: [spotify]
+      summary: Get followed artists
+      responses:
+        "200":
+          description: Followed artists
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: "#/components/schemas/SpotifyArtist"
+
+  /spotify/genres:
+    get:
+      operationId: getGenreDistribution
+      tags: [spotify]
+      summary: Get genre distribution from top artists
+      parameters:
+        - name: time_range
+          in: query
+          required: false
+          schema:
+            type: string
+            enum: [short_term, medium_term, long_term]
+            default: medium_term
+      responses:
+        "200":
+          description: Genre distribution
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: "#/components/schemas/GenreItem"
+
+  /spotify/stats:
+    get:
+      operationId: getStats
+      tags: [spotify]
+      summary: Get aggregated listening stats
+      responses:
+        "200":
+          description: Stats
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ListeningStats"
+
+  /spotify/insights:
+    get:
+      operationId: getInsights
+      tags: [spotify]
+      summary: Get auto-generated insights about listening habits
+      responses:
+        "200":
+          description: Insights
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/InsightsData"
+
+  /spotify/wrapped:
+    get:
+      operationId: getWrapped
+      tags: [spotify]
+      summary: Get personal wrapped summary
+      parameters:
+        - name: year
+          in: query
+          required: false
+          schema:
+            type: integer
+      responses:
+        "200":
+          description: Wrapped data
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/WrappedData"
+
+  /spotify/artist/{id}:
+    get:
+      operationId: getArtistDetail
+      tags: [spotify]
+      summary: Get artist detail
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: string
+      responses:
+        "200":
+          description: Artist detail
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ArtistDetail"
+
+  /spotify/album/{id}:
+    get:
+      operationId: getAlbumDetail
+      tags: [spotify]
+      summary: Get album detail
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: string
+      responses:
+        "200":
+          description: Album detail
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/AlbumDetail"
+
+  /spotify/track/{id}:
+    get:
+      operationId: getTrackDetail
+      tags: [spotify]
+      summary: Get track detail
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: string
+      responses:
+        "200":
+          description: Track detail
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/TrackDetail"
+
+  /spotify/sync:
+    post:
+      operationId: syncSpotifyData
+      tags: [spotify]
+      summary: Trigger sync of Spotify data
+      responses:
+        "200":
+          description: Sync triggered
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/SyncResult"
+
+  /spotify/activity:
+    get:
+      operationId: getListeningActivity
+      tags: [spotify]
+      summary: Get listening activity heatmap and breakdown
+      parameters:
+        - name: period
+          in: query
+          required: false
+          schema:
+            type: string
+            enum: [7d, 30d, 90d, 1y, all]
+            default: 30d
+      responses:
+        "200":
+          description: Listening activity
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ActivityData"
+
 components:
   schemas:
     HealthStatus:
       type: object
+      required: [status]
       properties:
         status:
           type: string
-      required:
-        - status
 
+    LoginUrl:
+      type: object
+      required: [url]
+      properties:
+        url:
+          type: string
+
+    UserProfile:
+      type: object
+      required: [id, displayName, email, country, product, followers, images]
+      properties:
+        id:
+          type: string
+        displayName:
+          type: string
+        email:
+          type: string
+        country:
+          type: string
+        product:
+          type: string
+        followers:
+          type: integer
+        images:
+          type: array
+          items:
+            $ref: "#/components/schemas/SpotifyImage"
+        spotifyUrl:
+          type: ["string", "null"]
+
+    SpotifyImage:
+      type: object
+      required: [url]
+      properties:
+        url:
+          type: string
+        width:
+          type: ["integer", "null"]
+        height:
+          type: ["integer", "null"]
+
+    NowPlaying:
+      type: object
+      required: [isPlaying]
+      properties:
+        isPlaying:
+          type: boolean
+        track:
+          $ref: "#/components/schemas/SpotifyTrack"
+        progressMs:
+          type: ["integer", "null"]
+        device:
+          $ref: "#/components/schemas/SpotifyDevice"
+
+    SpotifyDevice:
+      type: object
+      required: [name, type]
+      properties:
+        name:
+          type: string
+        type:
+          type: string
+        isActive:
+          type: boolean
+
+    SpotifyArtist:
+      type: object
+      required: [id, name, genres, popularity, followers, images, spotifyUrl]
+      properties:
+        id:
+          type: string
+        name:
+          type: string
+        genres:
+          type: array
+          items:
+            type: string
+        popularity:
+          type: integer
+        followers:
+          type: integer
+        images:
+          type: array
+          items:
+            $ref: "#/components/schemas/SpotifyImage"
+        spotifyUrl:
+          type: string
+        rank:
+          type: ["integer", "null"]
+
+    SpotifyAlbum:
+      type: object
+      required: [id, name, artists, images, releaseDate, totalTracks, spotifyUrl]
+      properties:
+        id:
+          type: string
+        name:
+          type: string
+        artists:
+          type: array
+          items:
+            $ref: "#/components/schemas/ArtistRef"
+        images:
+          type: array
+          items:
+            $ref: "#/components/schemas/SpotifyImage"
+        releaseDate:
+          type: string
+        totalTracks:
+          type: integer
+        spotifyUrl:
+          type: string
+
+    ArtistRef:
+      type: object
+      required: [id, name]
+      properties:
+        id:
+          type: string
+        name:
+          type: string
+
+    SpotifyTrack:
+      type: object
+      required: [id, name, artists, album, durationMs, popularity, spotifyUrl]
+      properties:
+        id:
+          type: string
+        name:
+          type: string
+        artists:
+          type: array
+          items:
+            $ref: "#/components/schemas/ArtistRef"
+        album:
+          $ref: "#/components/schemas/SpotifyAlbum"
+        durationMs:
+          type: integer
+        popularity:
+          type: integer
+        spotifyUrl:
+          type: string
+        previewUrl:
+          type: ["string", "null"]
+        rank:
+          type: ["integer", "null"]
+
+    RecentTrack:
+      type: object
+      required: [track, playedAt]
+      properties:
+        track:
+          $ref: "#/components/schemas/SpotifyTrack"
+        playedAt:
+          type: string
+
+    SpotifyPlaylist:
+      type: object
+      required: [id, name, owner, tracksTotal, images, spotifyUrl, isOwned]
+      properties:
+        id:
+          type: string
+        name:
+          type: string
+        description:
+          type: ["string", "null"]
+        owner:
+          type: string
+        tracksTotal:
+          type: integer
+        images:
+          type: array
+          items:
+            $ref: "#/components/schemas/SpotifyImage"
+        spotifyUrl:
+          type: string
+        isOwned:
+          type: boolean
+
+    SavedTracksResponse:
+      type: object
+      required: [total, items]
+      properties:
+        total:
+          type: integer
+        items:
+          type: array
+          items:
+            $ref: "#/components/schemas/SpotifyTrack"
+
+    SavedAlbumsResponse:
+      type: object
+      required: [total, items]
+      properties:
+        total:
+          type: integer
+        items:
+          type: array
+          items:
+            $ref: "#/components/schemas/SpotifyAlbum"
+
+    GenreItem:
+      type: object
+      required: [genre, count, percentage]
+      properties:
+        genre:
+          type: string
+        count:
+          type: integer
+        percentage:
+          type: number
+
+    ListeningStats:
+      type: object
+      required: [topArtistsShort, topArtistsMedium, topArtistsLong, topTracksShort, topTracksMedium, topTracksLong, savedTracksTotal, savedAlbumsTotal, followedArtistsTotal, playlistsTotal, recentTracksCount, uniqueArtistsCount, uniqueAlbumsCount, uniqueGenresCount]
+      properties:
+        topArtistsShort:
+          type: array
+          items:
+            $ref: "#/components/schemas/SpotifyArtist"
+        topArtistsMedium:
+          type: array
+          items:
+            $ref: "#/components/schemas/SpotifyArtist"
+        topArtistsLong:
+          type: array
+          items:
+            $ref: "#/components/schemas/SpotifyArtist"
+        topTracksShort:
+          type: array
+          items:
+            $ref: "#/components/schemas/SpotifyTrack"
+        topTracksMedium:
+          type: array
+          items:
+            $ref: "#/components/schemas/SpotifyTrack"
+        topTracksLong:
+          type: array
+          items:
+            $ref: "#/components/schemas/SpotifyTrack"
+        savedTracksTotal:
+          type: integer
+        savedAlbumsTotal:
+          type: integer
+        followedArtistsTotal:
+          type: integer
+        playlistsTotal:
+          type: integer
+        recentTracksCount:
+          type: integer
+        uniqueArtistsCount:
+          type: integer
+        uniqueAlbumsCount:
+          type: integer
+        uniqueGenresCount:
+          type: integer
+        estimatedMinutesListened:
+          type: ["integer", "null"]
+
+    InsightsData:
+      type: object
+      required: [allTimeTopArtist, monthTopArtist, mostPlayedTrack, dominantGenre, mostActiveHour, mostActiveDayOfWeek, mostActiveMonth, favoriteDecade, insights]
+      properties:
+        allTimeTopArtist:
+          $ref: "#/components/schemas/SpotifyArtist"
+        monthTopArtist:
+          $ref: "#/components/schemas/SpotifyArtist"
+        mostPlayedTrack:
+          $ref: "#/components/schemas/SpotifyTrack"
+        mostPlayedAlbum:
+          $ref: "#/components/schemas/SpotifyAlbum"
+        dominantGenre:
+          type: string
+        mostActiveHour:
+          type: integer
+        mostActiveDayOfWeek:
+          type: string
+        mostActiveMonth:
+          type: string
+        favoriteDecade:
+          type: string
+        insights:
+          type: array
+          items:
+            $ref: "#/components/schemas/Insight"
+
+    Insight:
+      type: object
+      required: [title, description, emoji]
+      properties:
+        title:
+          type: string
+        description:
+          type: string
+        emoji:
+          type: string
+
+    WrappedData:
+      type: object
+      required: [year, topArtists, topTracks, topGenres, topAlbums, totalMinutesListened, newDiscoveries]
+      properties:
+        year:
+          type: integer
+        topArtists:
+          type: array
+          items:
+            $ref: "#/components/schemas/SpotifyArtist"
+        topTracks:
+          type: array
+          items:
+            $ref: "#/components/schemas/SpotifyTrack"
+        topGenres:
+          type: array
+          items:
+            $ref: "#/components/schemas/GenreItem"
+        topAlbums:
+          type: array
+          items:
+            $ref: "#/components/schemas/SpotifyAlbum"
+        totalMinutesListened:
+          type: integer
+        newDiscoveries:
+          type: integer
+        minutesPerDay:
+          type: ["number", "null"]
+
+    ArtistDetail:
+      type: object
+      required: [artist, topTracks, relatedArtists, albums]
+      properties:
+        artist:
+          $ref: "#/components/schemas/SpotifyArtist"
+        topTracks:
+          type: array
+          items:
+            $ref: "#/components/schemas/SpotifyTrack"
+        relatedArtists:
+          type: array
+          items:
+            $ref: "#/components/schemas/SpotifyArtist"
+        albums:
+          type: array
+          items:
+            $ref: "#/components/schemas/SpotifyAlbum"
+        userRank:
+          type: ["integer", "null"]
+
+    AlbumDetail:
+      type: object
+      required: [album, tracks]
+      properties:
+        album:
+          $ref: "#/components/schemas/SpotifyAlbum"
+        tracks:
+          type: array
+          items:
+            $ref: "#/components/schemas/SpotifyTrack"
+
+    TrackDetail:
+      type: object
+      required: [track, audioFeatures]
+      properties:
+        track:
+          $ref: "#/components/schemas/SpotifyTrack"
+        audioFeatures:
+          $ref: "#/components/schemas/AudioFeatures"
+
+    AudioFeatures:
+      type: object
+      required: [danceability, energy, valence, tempo, acousticness, instrumentalness, speechiness, loudness]
+      properties:
+        danceability:
+          type: number
+        energy:
+          type: number
+        valence:
+          type: number
+        tempo:
+          type: number
+        acousticness:
+          type: number
+        instrumentalness:
+          type: number
+        speechiness:
+          type: number
+        loudness:
+          type: number
+
+    SyncResult:
+      type: object
+      required: [success, message]
+      properties:
+        success:
+          type: boolean
+        message:
+          type: string
+
+    ActivityData:
+      type: object
+      required: [byHour, byDayOfWeek, byMonth, timeline]
+      properties:
+        byHour:
+          type: array
+          items:
+            $ref: "#/components/schemas/ActivityBucket"
+        byDayOfWeek:
+          type: array
+          items:
+            $ref: "#/components/schemas/ActivityBucket"
+        byMonth:
+          type: array
+          items:
+            $ref: "#/components/schemas/ActivityBucket"
+        timeline:
+          type: array
+          items:
+            $ref: "#/components/schemas/TimelinePoint"
+
+    ActivityBucket:
+      type: object
+      required: [label, count]
+      properties:
+        label:
+          type: string
+        count:
+          type: integer
+
+    TimelinePoint:
+      type: object
+      required: [date, count]
+      properties:
+        date:
+          type: string
+        count:
+          type: integer
