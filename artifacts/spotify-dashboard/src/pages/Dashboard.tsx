@@ -1,6 +1,6 @@
 import { useGetStats, useGetNowPlaying, getGetNowPlayingQueryKey, useGetTopArtists, useGetTopTracks } from "@workspace/api-client-react";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
-import { Music, Mic2, Disc, PlayCircle, Clock } from "lucide-react";
+import { Music, Mic2, Disc, PlayCircle, Clock, BarChart2 } from "lucide-react";
 import { Link } from "wouter";
 
 export default function Dashboard() {
@@ -8,6 +8,8 @@ export default function Dashboard() {
   const { data: nowPlaying } = useGetNowPlaying({ query: { refetchInterval: 10000, queryKey: getGetNowPlayingQueryKey() } });
   const { data: topArtists } = useGetTopArtists({ limit: 5, time_range: "short_term" });
   const { data: topTracks } = useGetTopTracks({ limit: 5, time_range: "short_term" });
+
+  const statsAny = stats as any;
 
   return (
     <div className="space-y-8 animate-in fade-in slide-in-from-bottom-4 duration-500">
@@ -52,10 +54,21 @@ export default function Dashboard() {
         </Card>
       )}
 
+      {/* Stats row — DB-powered first, then library */}
       <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
-        <StatCard title="Total Tracks" value={stats?.savedTracksTotal} icon={Music} />
-        <StatCard title="Total Albums" value={stats?.savedAlbumsTotal} icon={Disc} />
-        <StatCard title="Followed Artists" value={stats?.followedArtistsTotal} icon={Mic2} />
+        <StatCard
+          title="Total Streams"
+          value={statsAny?.totalStreams}
+          icon={BarChart2}
+          highlight
+        />
+        <StatCard
+          title="Minutes Listened"
+          value={statsAny?.totalMinutesListened}
+          icon={Clock}
+          highlight
+        />
+        <StatCard title="Saved Tracks" value={stats?.savedTracksTotal} icon={Music} />
         <StatCard title="Playlists" value={stats?.playlistsTotal} icon={PlayCircle} />
       </div>
 
@@ -66,14 +79,23 @@ export default function Dashboard() {
             <Link href="/artists" className="text-sm text-primary hover:underline">View all</Link>
           </CardHeader>
           <CardContent className="space-y-4">
-            {topArtists?.map((artist, i) => (
+            {(topArtists as any[])?.map((artist: any, i: number) => (
               <Link key={artist.id} href={`/artist/${artist.id}`} className="flex items-center gap-4 group hover:bg-secondary/50 p-2 -mx-2 rounded-md transition-colors">
-                <span className="w-4 font-mono text-muted-foreground text-right">{i + 1}</span>
-                <img src={artist.images[0]?.url} alt={artist.name} className="w-12 h-12 rounded-full object-cover" />
+                <span className="w-4 font-mono text-muted-foreground text-right text-sm">{i + 1}</span>
+                {artist.images?.[0]?.url ? (
+                  <img src={artist.images[0].url} alt={artist.name} className="w-12 h-12 rounded-full object-cover flex-shrink-0" />
+                ) : (
+                  <div className="w-12 h-12 rounded-full bg-secondary flex items-center justify-center flex-shrink-0">
+                    <Mic2 className="w-5 h-5 text-muted-foreground" />
+                  </div>
+                )}
                 <div className="flex-1 min-w-0">
                   <p className="font-semibold truncate group-hover:text-primary transition-colors">{artist.name}</p>
-                  <p className="text-xs text-muted-foreground truncate">{artist.genres.slice(0, 2).join(", ")}</p>
+                  <p className="text-xs text-muted-foreground truncate">{artist.genres?.slice(0, 2).join(", ")}</p>
                 </div>
+                {artist.streamCount != null && (
+                  <span className="text-xs text-primary font-semibold whitespace-nowrap">{artist.streamCount.toLocaleString()} plays</span>
+                )}
               </Link>
             ))}
           </CardContent>
@@ -85,14 +107,23 @@ export default function Dashboard() {
             <Link href="/tracks" className="text-sm text-primary hover:underline">View all</Link>
           </CardHeader>
           <CardContent className="space-y-4">
-            {topTracks?.map((track, i) => (
-              <Link key={track.id} href={`/track/${track.id}`} className="flex items-center gap-4 group hover:bg-secondary/50 p-2 -mx-2 rounded-md transition-colors">
-                <span className="w-4 font-mono text-muted-foreground text-right">{i + 1}</span>
-                <img src={track.album.images[0]?.url} alt={track.name} className="w-12 h-12 rounded shadow-sm object-cover" />
+            {(topTracks as any[])?.map((track: any, i: number) => (
+              <Link key={`${track.id}-${i}`} href={`/track/${track.id}`} className="flex items-center gap-4 group hover:bg-secondary/50 p-2 -mx-2 rounded-md transition-colors">
+                <span className="w-4 font-mono text-muted-foreground text-right text-sm">{i + 1}</span>
+                {track.album?.images?.[0]?.url ? (
+                  <img src={track.album.images[0].url} alt={track.name} className="w-12 h-12 rounded shadow-sm object-cover flex-shrink-0" />
+                ) : (
+                  <div className="w-12 h-12 rounded bg-secondary flex items-center justify-center flex-shrink-0">
+                    <Music className="w-5 h-5 text-muted-foreground" />
+                  </div>
+                )}
                 <div className="flex-1 min-w-0">
                   <p className="font-semibold truncate group-hover:text-primary transition-colors">{track.name}</p>
-                  <p className="text-xs text-muted-foreground truncate">{track.artists.map(a => a.name).join(", ")}</p>
+                  <p className="text-xs text-muted-foreground truncate">{track.artists?.map((a: any) => a.name).join(", ")}</p>
                 </div>
+                {track.streamCount != null && (
+                  <span className="text-xs text-primary font-semibold whitespace-nowrap">{track.streamCount.toLocaleString()} plays</span>
+                )}
               </Link>
             ))}
           </CardContent>
@@ -102,14 +133,16 @@ export default function Dashboard() {
   );
 }
 
-function StatCard({ title, value, icon: Icon }: { title: string, value?: number, icon: any }) {
+function StatCard({ title, value, icon: Icon, highlight }: { title: string; value?: number; icon: any; highlight?: boolean }) {
   return (
-    <Card className="bg-card hover:bg-secondary/20 transition-colors">
+    <Card className={`hover:bg-secondary/20 transition-colors ${highlight ? "bg-primary/10 border-primary/20" : "bg-card"}`}>
       <CardContent className="p-6">
         <div className="flex justify-between items-start mb-4">
-          <Icon className="w-6 h-6 text-primary" />
+          <Icon className={`w-6 h-6 ${highlight ? "text-primary" : "text-muted-foreground"}`} />
         </div>
-        <h3 className="text-3xl font-black tracking-tighter mb-1">{value !== undefined ? value.toLocaleString() : "-"}</h3>
+        <h3 className={`text-3xl font-black tracking-tighter mb-1 ${highlight ? "text-primary" : ""}`}>
+          {value !== undefined ? value.toLocaleString() : <span className="text-muted-foreground animate-pulse">...</span>}
+        </h3>
         <p className="text-sm text-muted-foreground font-medium">{title}</p>
       </CardContent>
     </Card>
